@@ -1,6 +1,7 @@
 JSON parser for ENCODE DCC data<br><br>
 Compile like this <br>
 javac -cp json-20140107.jar encode/json/EncodeDCCJsonParser.java
+(Get java json library from http://central.maven.org/maven2/org/json/json/20140107/json-20140107.jar)
 <br><br>
 Run like this<br>
 
