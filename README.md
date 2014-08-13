@@ -11,7 +11,7 @@ java encode.json.EncodeDCCJsonParser "https://www.encodedcc.org/search/?type=exp
 	  1. URL with query string built in. For example: https://www.encodedcc.org/search/?type=experiment&replicates.library.biosample.biosample_type=tissue&organ_slims=small+intestine&assay_term_name=ChIP-seq&target.label=POLR2A
 	  2. Output file name (fully qualified)
 	  3. Output file format (tsv or csv)
-	  4 (optional) Fully qualified file that containts list of accession numbers in this format<br>
+	  4. (optional) Fully qualified file that containts list of accession numbers in this format<br>
 	  ENCRXXXX1<br>
 	  ENCRXXXX2<br>
 	  .<br>
