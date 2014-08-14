@@ -91,7 +91,8 @@ public class EncodeDCCJsonParser {
 												 .append("technicalReplicate").append(output_delimiter)
 												 .append("run type").append(output_delimiter)
 												 .append("read length").append(output_delimiter)
-												 .append("control details(@Accession;URL;md5Sum)")
+												 .append("control details(@Accession;URL;md5Sum)").append(output_delimiter)
+												 .append("friendly name")
 												 .append("\n");
 		//write title out to file
 		outFile.write(title.toString());
