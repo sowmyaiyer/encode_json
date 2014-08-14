@@ -280,6 +280,17 @@ public class EncodeDCCJsonParser {
 		    			throw jsonException;
 		    	}
 		    	// Build metadata row. If you add/delete columns, remember to consolidate with title row in the beginning of method
+		    	final String underscore = "_";
+		    	String friendly_name = new StringBuffer().append(accession).append(underscore)
+		    										     .append(organism).append(underscore)
+		    										     .append(lifeStage).append(underscore)
+		    										     .append(age).append(underscore)
+		    										     .append(tissue).append(underscore)
+		    										     .append(assay).append(underscore)
+		    										     .append(target).append(underscore)
+		    										     .append(biologicalReplicate).append(underscore)
+		    										     .append(technicalReplicate).toString();
+		    	
 		    	StringBuffer row = new StringBuffer().append(accession).append(output_delimiter)
 		    										 .append(inAccesionList).append(output_delimiter)
 	    											 .append(organism).append(output_delimiter)
@@ -300,13 +311,14 @@ public class EncodeDCCJsonParser {
 	    											 .append(technicalReplicate).append(output_delimiter)
 	    											 .append(runType).append(output_delimiter)
 	    											 .append(readLength).append(output_delimiter)
-	    											 .append(controlDetails)
+	    											 .append(controlDetails).append(output_delimiter)
+	    											 .append(friendly_name)
 	    											 .append("\n");
 		    	//write row to output file
 		    	outFile.write(row.toString());
 		    	
 		    	}
-		    	
+		    System.out.println("Done writing details for experiment " + (i+1) + " of " + n);	
 		    }
 	    	outFile.close();
 		    
