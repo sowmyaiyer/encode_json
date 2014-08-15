@@ -208,38 +208,40 @@ public class EncodeDCCJsonParser {
 		    try {
 		    	JSONArray controls = objExperiment.getJSONArray("possible_controls");
 		    	int l = controls.length();
-		    	//For each control file listed
+		    	//For each control listed
 		    	for (int k = 0; k < l; k ++)
 		    	{
 		    		JSONObject control = controls.getJSONObject(k);
+		    		String control_url = control.getString("@id");
 		    		String control_accession = control.getString("accession");
-		    		JSONArray controlFiles = control.getJSONArray("files");
+		    		
 		    		controlDetails = new StringBuffer();
-		    		for (int a = 0; a < controlFiles.length(); a ++)
-		    		{
-		    			URL controlURL = new URL(new StringBuffer().append(protocol).append("://").append(host).append(controlFiles.getString(a)).append("?format=json").toString());
-		    			Scanner scanControlPage;
-		    			try {
-		    			 scanControlPage = new Scanner(controlURL.openStream());
-		    			} catch (IOException ioe)
-		    			{
-		    				System.err.println("Warning: "+"Error fetching page " + controlURL + " for accession " + accession);
-		    				ioe.printStackTrace();
-		    				continue;
-		    			}
-		    			 StringBuffer strBufferControlPage = new StringBuffer();
-		    			 while (scanControlPage.hasNext())
-		    				 strBufferControlPage.append(scanControlPage.nextLine());
-		    			 scanControlPage.close();
-		    			 
-		    			 // build a JSON object for control file page
-		    			 JSONObject objControl = new JSONObject(strBufferControlPage.toString());
-		    			 String controlHref = objControl.getString("href");
-		    			 String controlMd5 = objControl.getString("md5sum");
-		    			 
-		    			 //build one string for "control details" column, merging multiple control file metadata
-		    			 controlDetails.append("@").append(control_accession).append(";").append(protocol).append("://").append(host).append(controlHref).append(";").append(controlMd5);
-		    		}
+
+	    			URL controlURL = new URL(new StringBuffer().append(protocol).append("://").append(host).append(control_url).append("?format=json").toString());
+	    			Scanner scanControlPage = new Scanner(controlURL.openStream());
+	    			StringBuffer strBufferControlPage = new StringBuffer();
+	    			while (scanControlPage.hasNext())
+	    			{
+	    				strBufferControlPage.append(scanControlPage.nextLine());
+	    			}
+	    			scanControlPage.close();
+	    			 
+	    			 // build a JSON object for control experiment 
+	    			 JSONObject objControl = new JSONObject(strBufferControlPage.toString());
+	    			 JSONArray controlFiles = objControl.getJSONArray("files");
+	    			 for (int a = 0; a < controlFiles.length(); a ++)
+	    			 {
+	    				 JSONObject controlFile = controlFiles.getJSONObject(a);
+	    				 String controlFilestatus = controlFile.getString("status");
+	    				 if (controlFilestatus.equals("released"))
+	    				 {
+	    					 String controlHref = controlFile.getString("href");
+		    				 String controlMd5 = controlFile.getString("md5sum");
+	    					 //build one string for "control details" column, merging multiple control file metadata
+	    					 controlDetails.append("@").append(control_accession).append(";").append(protocol).append("://").append(host).append(controlHref).append(";").append(controlMd5);
+	    				 }
+	    			 }
+
 		    	}
 		    } catch(JSONException jsonException)
 	    	{
@@ -265,6 +267,8 @@ public class EncodeDCCJsonParser {
 		    for (int j = 0; j < c; j ++ )
 		    {
 		    	JSONObject file = files.getJSONObject(j);
+		    	if ( !file.getString("status").equals("released"))
+		    		continue;
 		    	String fileFormat = "NA";
 		    	long fileSize = 0;
 		    	String href = "NA";
