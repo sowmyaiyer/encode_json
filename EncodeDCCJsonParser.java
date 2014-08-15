@@ -9,6 +9,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.StringTokenizer;
 
 import org.json.*;
 
@@ -85,6 +86,7 @@ public class EncodeDCCJsonParser {
 												 .append("fileSize").append(output_delimiter)
 												 .append("URL").append(output_delimiter)
 												 .append("md5sum").append(output_delimiter)
+												 .append("assembly").append(output_delimiter)
 												 .append("lab").append(output_delimiter)
 												 .append("date created").append(output_delimiter)
 												 .append("biologicalReplicate").append(output_delimiter)
@@ -131,12 +133,11 @@ public class EncodeDCCJsonParser {
 	    	String target = "NA";
 	    	String status = "NA";
 	    	JSONObject details = null;
-	    	String organism = "NA";
 	    	String age = "NA";
 	    	String lifeStage = "NA";
 	    	String description = "NA";
 	    	String inAccesionList = "NA";
-	    	
+	    	String organism = "NA";
 	    	
 	    	//experiment-specific details
 	    	try {
@@ -144,14 +145,16 @@ public class EncodeDCCJsonParser {
 	    	 accession = experiment.getString("accession");
 	    	 assay = experiment.getString("assay_term_name");
 	    	 tissue = experiment.getString("biosample_term_name");
-	    	 target = experiment.getString("target.label"); //antibody
-	    	 status = experiment.getString("status"); //released 
+	    	 status = experiment.getString("status"); //released
+	    	 description = experiment.getString("description");
 	    	 details = experiment.getJSONArray("replicates").getJSONObject(0).getJSONObject("library").getJSONObject("biosample");
-	    	 organism = details.getJSONObject("organism").getString("scientific_name");
 	    	 age = details.getString("age") + details.getString("age_units"); //11.5 days, 8 weeks, etc
 	    	 lifeStage = details.getString("life_stage"); //embryonic, adult etc
-	    	 description = experiment.getString("description");
+	    	 String organism_full = details.getJSONObject("organism").getString("scientific_name");
+	    	 String[] s = organism_full.split("\\s+");
 	    	 
+	    	 organism =s[0].substring(0,1).toLowerCase() + s[1].substring(0,1).toLowerCase(); 
+	    	 target = experiment.getString("target.label"); //antibody
 	    	
 	    	} catch (JSONException jsonException)
 	    	{
@@ -159,8 +162,9 @@ public class EncodeDCCJsonParser {
 	    		{
 	    			if (jsonException.getMessage().indexOf("accession") > 0)
 	    				throw jsonException;
-	    			else
+	    			else {
 	    				System.err.println("Warning: "+jsonException.getMessage() +  "for accession number " + accession);
+	    			} 
 	    		}
 	    		else
 	    			throw jsonException;
@@ -188,9 +192,20 @@ public class EncodeDCCJsonParser {
 		    JSONObject objExperiment = new JSONObject(strBufferExperimentPage.toString());
 		    StringBuffer controlDetails = new StringBuffer().append("NA");
 		    String runType = "NA";
-		    
+	    	String assembly = "NA";
 		    try {
 		    	runType = objExperiment.getString("run_type"); //Single-ended vs paired end
+		    	assembly = objExperiment.getString("assembly"); //Sometimes assembly is at the experiment level, sometimes at file level
+		    } catch(JSONException jsonException)
+	    	{
+	    		if (jsonException.getMessage().indexOf("not found") > 0)
+	    		{
+	    			System.err.println("Warning: "+jsonException.getMessage()  +  "for accession number " + accession);
+	    		}
+	    		else
+	    			throw jsonException;
+	    	}
+		    try {
 		    	JSONArray controls = objExperiment.getJSONArray("possible_controls");
 		    	int l = controls.length();
 		    	//For each control file listed
@@ -259,23 +274,36 @@ public class EncodeDCCJsonParser {
 		    	int biologicalReplicate = 0;
 		    	int technicalReplicate = 0;
 		    	String readLength = "NA";
+		    	String fileAccession = "NA";
 		    	
 		    	// file-specific details
 		    	try {
-		    		fileFormat = file.getString("file_format");
-		    		fileSize = file.getLong("file_size");
+		    		fileAccession = file.getString("accession");
 		    		href = protocol + "://" + host + file.getString("href");
 		    		md5sum = file.getString("md5sum");
+		    		fileFormat = file.getString("file_format");
+		    		fileSize = file.getLong("file_size");
 		    		submittedBy = file.getJSONObject("submitted_by").getString("lab").replaceFirst("/labs/", "").replace("/","");
 		    		dateCreated = file.getString("date_created");
-		    		biologicalReplicate = file.getJSONObject("replicate").getInt("biological_replicate_number");
-		    		technicalReplicate = file.getJSONObject("replicate").getInt("technical_replicate_number");
-		    		readLength = file.getJSONObject("replicate").getInt("read_length") + file.getJSONObject("replicate").getString("read_length_units");
+		    		if (fileFormat.equals("fastq") || fileFormat.equals("bam"))
+		    		{
+		    			if (fileFormat.equals("fastq"))
+		    			{
+		    				readLength = file.getJSONObject("replicate").getInt("read_length") + file.getJSONObject("replicate").getString("read_length_units");
+		    			}
+		    			else
+		    			{
+		    				assembly = file.getString("assembly");//Sometimes assembly is at the experiment level, sometimes at file level
+		    			}
+		    			biologicalReplicate = file.getJSONObject("replicate").getInt("biological_replicate_number");
+		    			technicalReplicate = file.getJSONObject("replicate").getInt("technical_replicate_number");
+		    		}
+		    		
 		    	} catch (JSONException jsonException)
 		    	{
 		    		if (jsonException.getMessage().indexOf("not found") > 0)
 		    		{
-		    			System.err.println("Warning: "+jsonException.getMessage()  +  "for accession number " + accession);
+		    			System.err.println("Warning: "+jsonException.getMessage()  +  "for experiment accession number " + accession + " and file accession " + fileAccession);
 		    		}
 		    		else
 		    			throw jsonException;
@@ -306,6 +334,7 @@ public class EncodeDCCJsonParser {
 	    											 .append(fileSize).append(output_delimiter)
 	    											 .append(href).append(output_delimiter)
 	    											 .append(md5sum).append(output_delimiter)
+	    											 .append(assembly).append(output_delimiter)
 	    											 .append(submittedBy).append(output_delimiter)
 	    											 .append(dateCreated).append(output_delimiter)
 	    											 .append(biologicalReplicate).append(output_delimiter)
