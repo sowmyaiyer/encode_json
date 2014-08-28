@@ -1,4 +1,3 @@
-
 package encode.json;
 
 
@@ -83,6 +82,7 @@ public class EncodeDCCJsonParser {
 												 .append("status").append(output_delimiter)
 												 .append("description").append(output_delimiter)
 												 .append("fileFormat").append(output_delimiter)
+												 .append("output type").append(output_delimiter)
 												 .append("fileSize").append(output_delimiter)
 												 .append("URL").append(output_delimiter)
 												 .append("md5sum").append(output_delimiter)
@@ -279,6 +279,7 @@ public class EncodeDCCJsonParser {
 		    	int technicalReplicate = 0;
 		    	String readLength = "NA";
 		    	String fileAccession = "NA";
+		    	String outputType = "NA";
 		    	
 		    	// file-specific details
 		    	try {
@@ -289,6 +290,7 @@ public class EncodeDCCJsonParser {
 		    		fileSize = file.getLong("file_size");
 		    		submittedBy = file.getJSONObject("submitted_by").getString("lab").replaceFirst("/labs/", "").replace("/","");
 		    		dateCreated = file.getString("date_created");
+		    		outputType = file.getString("output_type");
 		    		if (fileFormat.equals("fastq") || fileFormat.equals("bam"))
 		    		{
 		    			if (fileFormat.equals("fastq"))
@@ -299,15 +301,18 @@ public class EncodeDCCJsonParser {
 		    			{
 		    				assembly = file.getString("assembly");//Sometimes assembly is at the experiment level, sometimes at file level
 		    			}
-		    			biologicalReplicate = file.getJSONObject("replicate").getInt("biological_replicate_number");
-		    			technicalReplicate = file.getJSONObject("replicate").getInt("technical_replicate_number");
+
 		    		}
+		    		
+	    			biologicalReplicate = file.getJSONObject("replicate").getInt("biological_replicate_number");
+	    			technicalReplicate = file.getJSONObject("replicate").getInt("technical_replicate_number");
 		    		
 		    	} catch (JSONException jsonException)
 		    	{
 		    		if (jsonException.getMessage().indexOf("not found") > 0)
 		    		{
 		    			System.err.println("Warning: "+jsonException.getMessage()  +  "for experiment accession number " + accession + " and file accession " + fileAccession);
+		    			continue;
 		    		}
 		    		else
 		    			throw jsonException;
@@ -335,6 +340,7 @@ public class EncodeDCCJsonParser {
 	    											 .append(status).append(output_delimiter)
 	    											 .append(description).append(output_delimiter)
 	    											 .append(fileFormat).append(output_delimiter)
+	    											 .append(outputType).append(output_delimiter)
 	    											 .append(fileSize).append(output_delimiter)
 	    											 .append(href).append(output_delimiter)
 	    											 .append(md5sum).append(output_delimiter)
