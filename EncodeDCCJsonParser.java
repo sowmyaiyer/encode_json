@@ -147,10 +147,10 @@ public class EncodeDCCJsonParser {
 	    	 tissue = experiment.getString("biosample_term_name");
 	    	 status = experiment.getString("status"); //released
 	    	 description = experiment.getString("description");
-	    	 details = experiment.getJSONArray("replicates").getJSONObject(0).getJSONObject("library").getJSONObject("biosample");
-	    	 age = details.getString("age") + details.getString("age_units"); //11.5 days, 8 weeks, etc
-	    	 lifeStage = details.getString("life_stage"); //embryonic, adult etc
-	    	 String organism_full = details.getJSONObject("organism").getString("scientific_name");
+	    	 details = experiment.keySet().contains("replicates")?experiment.getJSONArray("replicates").getJSONObject(0).getJSONObject("library").getJSONObject("biosample") : null;
+	    	 age = (details != null) ? details.getString("age") + details.getString("age_units") : "NA"; //11.5 days, 8 weeks, etc
+	    	 lifeStage = (details != null) ?  details.getString("life_stage"):"NA"; //embryonic, adult etc
+	    	 String organism_full = (details != null) ? details.getJSONObject("organism").getString("scientific_name"):"NA";
 	    	 String[] s = organism_full.split("\\s+");
 	    	 
 	    	 organism =s[0].substring(0,1).toLowerCase() + s[1].substring(0,1).toLowerCase(); 
@@ -214,6 +214,9 @@ public class EncodeDCCJsonParser {
 		    		JSONObject control = controls.getJSONObject(k);
 		    		String control_url = control.getString("@id");
 		    		String control_accession = control.getString("accession");
+		    		String control_status = control.getString("status");
+		    		if (!control_status.equals("released"))
+		    			continue;
 		    		
 		    		controlDetails = new StringBuffer();
 
@@ -291,21 +294,26 @@ public class EncodeDCCJsonParser {
 		    		submittedBy = file.getJSONObject("submitted_by").getString("lab").replaceFirst("/labs/", "").replace("/","");
 		    		dateCreated = file.getString("date_created");
 		    		outputType = file.getString("output_type");
+		    		JSONObject replicate = file.getJSONObject("replicate");
 		    		if (fileFormat.equals("fastq") || fileFormat.equals("bam"))
 		    		{
 		    			if (fileFormat.equals("fastq"))
 		    			{
-		    				readLength = file.getJSONObject("replicate").getInt("read_length") + file.getJSONObject("replicate").getString("read_length_units");
+		    				try {
+		    				readLength = replicate != null? (replicate.getInt("read_length") + replicate.getString("read_length_units")):"NA";
+		    				} catch (JSONException jsonException) {}
 		    			}
 		    			else
 		    			{
+		    				try {
 		    				assembly = file.getString("assembly");//Sometimes assembly is at the experiment level, sometimes at file level
+		    				} catch (JSONException jsonException) {} 
 		    			}
 
 		    		}
 		    		
-	    			biologicalReplicate = file.getJSONObject("replicate").getInt("biological_replicate_number");
-	    			technicalReplicate = file.getJSONObject("replicate").getInt("technical_replicate_number");
+	    			biologicalReplicate = replicate != null? (replicate.getInt("biological_replicate_number")):0;
+	    			technicalReplicate = replicate != null? (replicate.getInt("technical_replicate_number")):0;
 		    		
 		    	} catch (JSONException jsonException)
 		    	{
