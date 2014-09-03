@@ -4,10 +4,16 @@ package encode.json;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.Authenticator;
+import java.net.PasswordAuthentication;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
+
+import org.apache.commons.codec.binary.Base64;
 import org.json.*;
 
 public class EncodeDCCJsonParser {
@@ -24,6 +30,8 @@ public class EncodeDCCJsonParser {
 	 * .
 	 * .
 	 * and so on 
+	 * 5. File with HTTP Authentication credentials in this format
+	 * <User>:<Password>
 	 * 
 	 * Output:
 	 * Program writes metadata to output file specified
@@ -58,6 +66,16 @@ public class EncodeDCCJsonParser {
 			    scan.close();
 			}
 		}
+		String auth = null;
+		if (args.length == 5)
+		{
+			String authKeyPairFileName = args[4];
+			Scanner sc = new Scanner(new File(authKeyPairFileName));
+			auth = sc.next();
+		    sc.close();
+		}
+		
+		
 		String output_delimiter = null;
 		
 		if (outputFileFormat.equals("tsv"))
@@ -101,12 +119,19 @@ public class EncodeDCCJsonParser {
 		
 	    URL url = new URL(urlString);
 	    
-	    
+	    URLConnection urlConn = url.openConnection();
+	    if (auth != null)
+	    {
+	    	String basicAuth = "Basic " + new String(new Base64().encode(auth.getBytes()));
+	    	urlConn.setRequestProperty ("Authorization", basicAuth);
+	    }
+	    	
 	    String host = url.getHost();
 	    String protocol = url.getProtocol();
+	   
 	 
 	    // read from the URL, load into local StringBuffer object
-	    Scanner scan = new Scanner(url.openStream());
+	    Scanner scan = new Scanner(urlConn.getInputStream());
 	    StringBuffer strBuffer = new StringBuffer();
 	    while (scan.hasNext())
 	        strBuffer.append(scan.nextLine());
@@ -126,6 +151,7 @@ public class EncodeDCCJsonParser {
 	    //For each experiment in results (from input URL)
 	    for (int i = 0; i < n; i ++)
 	    {
+	    	 System.out.println("Starting experiment " + (i+1) + " of " + n);
 	    	//experiment-specific details
 	    	JSONObject experiment = searchResults.getJSONObject(i);
 	    	String relativeURL = experiment.getString("@id");
