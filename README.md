@@ -1,12 +1,13 @@
 JSON parser for ENCODE DCC data<br><br>
-Download the file into the directory structure encode/json/EncodeDCCJsonParser.java<br>
+Download the java file into the directory structure encode/json/EncodeDCCJsonParser.java<br>
+Download jar file json-20140107.jar into some convenient location<br>
 Compile like this <br>
-javac -cp json-20140107.jar encode/json/EncodeDCCJsonParser.java<br>
+javac -cp /home/myhome/json-20140107.jar encode/json/EncodeDCCJsonParser.java<br>
 (***Get java json library from http://central.maven.org/maven2/org/json/json/20140107/json-20140107.jar***)
 <br><br>
 Run like this<br>
 
-java -cp .:json-20140107.jar encode.json.EncodeDCCJsonParser "https://www.encodedcc.org/search/?type=experiment&replicates.library.biosample.biosample_type=tissue&organ_slims=small+intestine&assay_term_name=ChIP-seq&target.label=POLR2A" "/home/myhome/sampleOutput.tsv" "tsv" "/home/input/ENCODE2experiments.txt"
+java -cp .:/home/myhome/json-20140107.jar encode.json.EncodeDCCJsonParser "https://www.encodedcc.org/search/?type=experiment&replicates.library.biosample.biosample_type=tissue&organ_slims=small+intestine&assay_term_name=ChIP-seq&target.label=POLR2A" "/home/myhome/sampleOutput.tsv" "tsv" "/home/input/ENCODE2experiments.txt"
 <br><br>
 Sample input file from this repository(4th argument) - ENCODE2experiments.txt <br>
 
