@@ -8,8 +8,6 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import java.util.StringTokenizer;
-
 import org.json.*;
 
 public class EncodeDCCJsonParser {
@@ -31,7 +29,7 @@ public class EncodeDCCJsonParser {
 	 * Program writes metadata to output file specified
 	 * 
 	 */
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws JSONException,IOException {
 
 		// build a JSON-formatted URL
 		
@@ -53,7 +51,7 @@ public class EncodeDCCJsonParser {
 			    	if (line.trim().split("\\s+").length > 1)
 			    	{
 			    		System.err.println("Accession list not in correct format. Only one accession number in each line allowed");
-			    		throw new Exception("Accession list not in correct format. Only one accession number in each line allowed");
+			    		throw new IOException("Accession list not in correct format. Only one accession number in each line allowed");
 			    	}
 			    	allowedAccessions.add(line);
 			    }
@@ -67,7 +65,7 @@ public class EncodeDCCJsonParser {
 		else if (outputFileFormat.equals("csv"))
 			output_delimiter = ",";
 		else
-			throw new Exception("output format can only be tsv or csv");
+			throw new IOException("output format can only be tsv or csv");
 		
 		FileWriter outFile = new FileWriter(outputFile);
 		// Create title string for output file. When you add/remove columns, remember to consolidate with last line that adds actual metadata.
@@ -79,8 +77,10 @@ public class EncodeDCCJsonParser {
 												 .append("assay").append(output_delimiter)
 												 .append("tissue/cell line").append(output_delimiter)
 												 .append("target").append(output_delimiter)
-												 .append("status").append(output_delimiter)
+												 .append("treatments").append(output_delimiter)
+												 .append("experimentStatus").append(output_delimiter)
 												 .append("description").append(output_delimiter)
+												 .append("fileStatus").append(output_delimiter)
 												 .append("fileFormat").append(output_delimiter)
 												 .append("output type").append(output_delimiter)
 												 .append("fileSize").append(output_delimiter)
@@ -99,8 +99,9 @@ public class EncodeDCCJsonParser {
 		//write title out to file
 		outFile.write(title.toString());
 		
-		
 	    URL url = new URL(urlString);
+	    
+	    
 	    String host = url.getHost();
 	    String protocol = url.getProtocol();
 	 
@@ -113,9 +114,9 @@ public class EncodeDCCJsonParser {
 	 
 	    // build a JSON object out of String
 	    JSONObject obj = new JSONObject(strBuffer.toString());
-	    if (! obj.getString("notification").equals("Success"))
+	    if (! obj.optString("notification").equals("Success"))
 	    {
-	       throw new Exception("Failed on notification field != \"Success\"");
+	       throw new JSONException("Failed on notification field != \"Success\"");
 	    }
 	 
 	    // Start parsing down the JSON objects. 
@@ -125,50 +126,49 @@ public class EncodeDCCJsonParser {
 	    //For each experiment in results (from input URL)
 	    for (int i = 0; i < n; i ++)
 	    {
+	    	//experiment-specific details
 	    	JSONObject experiment = searchResults.getJSONObject(i);
-	    	String relativeURL = "NA";
-	    	String accession = "NA";
-	    	String assay = "NA";
-	    	String tissue = "NA";
-	    	String target = "NA";
-	    	String status = "NA";
-	    	JSONObject details = null;
+	    	String relativeURL = experiment.getString("@id");
+	    	String accession = experiment.getString("accession");
+	    	String assay = experiment.optString("assay_term_name","NA");
+	    	String tissue =  experiment.optString("biosample_term_name","NA");
+	    	String target = experiment.optString("target.label","NA"); //antibody
+	    	String status = experiment.optString("status","NA"); //released
 	    	String age = "NA";
 	    	String lifeStage = "NA";
-	    	String description = "NA";
-	    	String inAccesionList = "NA";
 	    	String organism = "NA";
-	    	
-	    	//experiment-specific details
-	    	try {
-	    	 relativeURL = experiment.getString("@id");
-	    	 accession = experiment.getString("accession");
-	    	 assay = experiment.getString("assay_term_name");
-	    	 tissue = experiment.getString("biosample_term_name");
-	    	 status = experiment.getString("status"); //released
-	    	 description = experiment.getString("description");
-	    	 details = experiment.keySet().contains("replicates")?experiment.getJSONArray("replicates").getJSONObject(0).getJSONObject("library").getJSONObject("biosample") : null;
-	    	 age = (details != null) ? details.getString("age") + details.getString("age_units") : "NA"; //11.5 days, 8 weeks, etc
-	    	 lifeStage = (details != null) ?  details.getString("life_stage"):"NA"; //embryonic, adult etc
-	    	 String organism_full = (details != null) ? details.getJSONObject("organism").getString("scientific_name"):"NA";
-	    	 String[] s = organism_full.split("\\s+");
-	    	 
-	    	 organism =s[0].substring(0,1).toLowerCase() + s[1].substring(0,1).toLowerCase(); 
-	    	 target = experiment.getString("target.label"); //antibody
-	    	
-	    	} catch (JSONException jsonException)
-	    	{
-	    		if (jsonException.getMessage().indexOf("not found") > 0)
-	    		{
-	    			if (jsonException.getMessage().indexOf("accession") > 0)
-	    				throw jsonException;
-	    			else {
-	    				System.err.println("Warning: "+jsonException.getMessage() +  "for accession number " + accession);
-	    			} 
-	    		}
-	    		else
-	    			throw jsonException;
+	    	JSONObject details = new JSONObject();
+	    	StringBuffer treatments = new StringBuffer();
+	    	try{
+	    		details = experiment.optJSONArray("replicates").optJSONObject(0).optJSONObject("library").optJSONObject("biosample");
+	    		age = details.optString("age","NA") + details.optString("age_units","NA"); //11.5 days, 8 weeks, etc
+		    	lifeStage = details.optString("life_stage","NA"); //embryonic, adult etc
+		    	String organism_full = details.optJSONObject("organism") != null?details.optJSONObject("organism").optString("scientific_name","NA"):"NA";
+		    	String[] s = organism_full.split("\\s+");
+		    	organism = s[0].substring(0,1).toLowerCase() + s[1].substring(0,1).toLowerCase();
+		    	JSONArray treatments_arr = details.optJSONArray("treatments");
+		    	
+		    	if (treatments_arr != null)
+		    	{
+		    		int treatments_num = treatments_arr.length();
+		    		for (int t = 0; t < treatments_num; t ++)
+		    		{
+		    			if (t > 0)
+		    				treatments.append(";");
+		    			treatments.append(treatments_arr.getJSONObject(t).optString("treatment_term_name"));
+		    		}
+		    	}
+	    	}catch (NullPointerException ne) { 
+	    		//do nothing
 	    	}
+	    	
+	    	
+	    	String description =  experiment.optString("description","NA");
+	    	String inAccesionList = "NA";
+	    	
+	    	
+
+	    	
 	    	//check if this is in the external list (if provided)
 	    	if (allowedAccessions.size() > 0)
 	    	{
@@ -191,71 +191,52 @@ public class EncodeDCCJsonParser {
 		    // build a JSON object for experiment page
 		    JSONObject objExperiment = new JSONObject(strBufferExperimentPage.toString());
 		    StringBuffer controlDetails = new StringBuffer().append("NA");
-		    String runType = "NA";
-	    	String assembly = "NA";
-		    try {
-		    	runType = objExperiment.getString("run_type"); //Single-ended vs paired end
-		    	assembly = objExperiment.getString("assembly"); //Sometimes assembly is at the experiment level, sometimes at file level
-		    } catch(JSONException jsonException)
-	    	{
-	    		if (jsonException.getMessage().indexOf("not found") > 0)
-	    		{
-	    			System.err.println("Warning: "+jsonException.getMessage()  +  "for accession number " + accession);
-	    		}
-	    		else
-	    			throw jsonException;
-	    	}
-		    try {
-		    	JSONArray controls = objExperiment.getJSONArray("possible_controls");
-		    	int l = controls.length();
-		    	//For each control listed
-		    	for (int k = 0; k < l; k ++)
-		    	{
-		    		JSONObject control = controls.getJSONObject(k);
-		    		String control_url = control.getString("@id");
-		    		String control_accession = control.getString("accession");
-		    		String control_status = control.getString("status");
-		    		if (!control_status.equals("released"))
-		    			continue;
-		    		
-		    		controlDetails = new StringBuffer();
+		    String runType = objExperiment.optString("run_type","NA");
+	    	String assembly = objExperiment.optString("assembly","NA");
 
-	    			URL controlURL = new URL(new StringBuffer().append(protocol).append("://").append(host).append(control_url).append("?format=json").toString());
-	    			Scanner scanControlPage = new Scanner(controlURL.openStream());
-	    			StringBuffer strBufferControlPage = new StringBuffer();
-	    			while (scanControlPage.hasNext())
-	    			{
-	    				strBufferControlPage.append(scanControlPage.nextLine());
-	    			}
-	    			scanControlPage.close();
-	    			 
-	    			 // build a JSON object for control experiment 
-	    			 JSONObject objControl = new JSONObject(strBufferControlPage.toString());
-	    			 JSONArray controlFiles = objControl.getJSONArray("files");
-	    			 for (int a = 0; a < controlFiles.length(); a ++)
-	    			 {
-	    				 JSONObject controlFile = controlFiles.getJSONObject(a);
-	    				 String controlFilestatus = controlFile.getString("status");
-	    				 if (controlFilestatus.equals("released"))
-	    				 {
-	    					 String controlHref = controlFile.getString("href");
-		    				 String controlMd5 = controlFile.getString("md5sum");
-	    					 //build one string for "control details" column, merging multiple control file metadata
-	    					 controlDetails.append("@").append(control_accession).append(";").append(protocol).append("://").append(host).append(controlHref).append(";").append(controlMd5);
-	    				 }
-	    			 }
-
-		    	}
-		    } catch(JSONException jsonException)
+	    	JSONArray controls = objExperiment.optJSONArray("possible_controls");
+	    	int l = controls == null?0:controls.length();
+	    	//For each control listed
+	    	for (int k = 0; k < l; k ++)
 	    	{
-	    		if (jsonException.getMessage().indexOf("not found") > 0)
-	    		{
-	    			System.err.println("Warning: "+jsonException.getMessage()  +  "for accession number " + accession);
-	    		}
-	    		else
-	    			throw jsonException;
+	    		JSONObject control = controls.optJSONObject(k);
+	    		if (control == null)
+	    			continue;
+	    		String control_url = control.optString("@id");
+	    		String control_accession = control.optString("accession");
+	    		
+	    		controlDetails = new StringBuffer();
+
+    			URL controlURL = new URL(new StringBuffer().append(protocol).append("://").append(host).append(control_url).append("?format=json").toString());
+    			Scanner scanControlPage = new Scanner(controlURL.openStream());
+    			StringBuffer strBufferControlPage = new StringBuffer();
+    			while (scanControlPage.hasNext())
+    			{
+    				strBufferControlPage.append(scanControlPage.nextLine());
+    			}
+    			scanControlPage.close();
+    			 
+    			 // build a JSON object for control experiment 
+    			 JSONObject objControl = new JSONObject(strBufferControlPage.toString());
+    			 JSONArray controlFiles = objControl.optJSONArray("files");
+    			 int numControlFiles = controlFiles == null ? 0:controlFiles.length();
+    			 for (int a = 0; a < numControlFiles; a ++)
+    			 {
+    				 JSONObject controlFile = controlFiles.optJSONObject(a);
+    				 if (controlFile == null)
+    					 continue;
+    				 String controlFilestatus = controlFile.optString("status","NA");
+    				 if (controlFilestatus.equals("released"))
+    				 {
+    					 String controlHref = controlFile.optString("href","NA");
+	    				 String controlMd5 = controlFile.optString("md5sum","NA");
+    					 //build one string for "control details" column, merging multiple control file metadata
+    					 controlDetails.append("@").append(control_accession).append(";").append(protocol).append("://").append(host).append(controlHref).append(";").append(controlMd5);
+    				 }
+    			 }
+
 	    	}
-		    
+
 		    //Now get to actual files for experiment
 		    JSONArray files = null;
 		    try {
@@ -269,62 +250,30 @@ public class EncodeDCCJsonParser {
 		    // For each file
 		    for (int j = 0; j < c; j ++ )
 		    {
-		    	JSONObject file = files.getJSONObject(j);
-		    	if ( !file.getString("status").equals("released"))
+		    	JSONObject file = files.optJSONObject(j);
+		    	if (file == null)
 		    		continue;
-		    	String fileFormat = "NA";
-		    	long fileSize = 0;
-		    	String href = "NA";
-		    	String md5sum = "NA";
-		    	String submittedBy = "NA";
-		    	String dateCreated = "NA";
+		    	String fileStatus = file.optString("status","NA");
+		    	String fileFormat = file.optString("file_format","NA");
+		    	long fileSize = file.optLong("file_size",0);
+		    	String href = protocol + "://" + host + file.optString("href","NA");
+		    	String md5sum = file.optString("md5sum","NA");
+		    	String submittedBy = file.optJSONObject("submitted_by") == null? "NA":file.optJSONObject("submitted_by").optString("lab","NA").replaceFirst("/labs/", "").replace("/","");
+		    	String dateCreated = file.optString("date_created","NA");
+		    	
 		    	int biologicalReplicate = 0;
 		    	int technicalReplicate = 0;
 		    	String readLength = "NA";
-		    	String fileAccession = "NA";
 		    	String outputType = "NA";
-		    	
-		    	// file-specific details
-		    	try {
-		    		fileAccession = file.getString("accession");
-		    		href = protocol + "://" + host + file.getString("href");
-		    		md5sum = file.getString("md5sum");
-		    		fileFormat = file.getString("file_format");
-		    		fileSize = file.getLong("file_size");
-		    		submittedBy = file.getJSONObject("submitted_by").getString("lab").replaceFirst("/labs/", "").replace("/","");
-		    		dateCreated = file.getString("date_created");
-		    		outputType = file.getString("output_type");
-		    		JSONObject replicate = file.getJSONObject("replicate");
-		    		if (fileFormat.equals("fastq") || fileFormat.equals("bam"))
-		    		{
-		    			if (fileFormat.equals("fastq"))
-		    			{
-		    				try {
-		    				readLength = replicate != null? (replicate.getInt("read_length") + replicate.getString("read_length_units")):"NA";
-		    				} catch (JSONException jsonException) {}
-		    			}
-		    			else
-		    			{
-		    				try {
-		    				assembly = file.getString("assembly");//Sometimes assembly is at the experiment level, sometimes at file level
-		    				} catch (JSONException jsonException) {} 
-		    			}
-
-		    		}
-		    		
-	    			biologicalReplicate = replicate != null? (replicate.getInt("biological_replicate_number")):0;
-	    			technicalReplicate = replicate != null? (replicate.getInt("technical_replicate_number")):0;
-		    		
-		    	} catch (JSONException jsonException)
+		    	JSONObject replicate = file.optJSONObject("replicate");
+		    	if (replicate != null && replicate.optInt("read_length") != 0)
 		    	{
-		    		if (jsonException.getMessage().indexOf("not found") > 0)
-		    		{
-		    			System.err.println("Warning: "+jsonException.getMessage()  +  "for experiment accession number " + accession + " and file accession " + fileAccession);
-		    			continue;
-		    		}
-		    		else
-		    			throw jsonException;
+		    		readLength = replicate.optInt("read_length") + replicate.optString("read_length_units","NA");
+		    		biologicalReplicate = replicate.optInt("biological_replicate_number");
+		    		technicalReplicate = replicate.optInt("technical_replicate_number");
 		    	}
+		    	assembly = file.optString("assembly","NA");
+		    	
 		    	// Build metadata row. If you add/delete columns, remember to consolidate with title row in the beginning of method
 		    	final String underscore = "_";
 		    	String friendly_name = new StringBuffer().append(accession).append(underscore)
@@ -345,8 +294,10 @@ public class EncodeDCCJsonParser {
 	    											 .append(assay).append(output_delimiter)
 	    											 .append(tissue).append(output_delimiter)
 	    											 .append(target).append(output_delimiter)
+	    											 .append(treatments.toString()).append(output_delimiter)
 	    											 .append(status).append(output_delimiter)
 	    											 .append(description).append(output_delimiter)
+	    											 .append(fileStatus).append(output_delimiter)
 	    											 .append(fileFormat).append(output_delimiter)
 	    											 .append(outputType).append(output_delimiter)
 	    											 .append(fileSize).append(output_delimiter)
