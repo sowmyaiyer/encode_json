@@ -174,7 +174,7 @@ public class EncodeDCCJsonParser {
 		    	organism = s[0].substring(0,1).toLowerCase() + s[1].substring(0,1).toLowerCase();
 		    	JSONArray treatments_arr = details.optJSONArray("treatments");
 		    	
-		    	if (treatments_arr != null)
+		    	if (treatments_arr != null && treatments_arr.length() > 0)
 		    	{
 		    		int treatments_num = treatments_arr.length();
 		    		for (int t = 0; t < treatments_num; t ++)
@@ -183,6 +183,8 @@ public class EncodeDCCJsonParser {
 		    				treatments.append(";");
 		    			treatments.append(treatments_arr.getJSONObject(t).optString("treatment_term_name"));
 		    		}
+		    	} else {
+		    		treatments.append("none");
 		    	}
 	    	}catch (NullPointerException ne) { 
 	    		//do nothing
