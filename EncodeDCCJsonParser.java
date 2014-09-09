@@ -23,7 +23,7 @@ public class EncodeDCCJsonParser {
 	 * 1. URL with query strings built in. For example: https://www.encodedcc.org/search/?type=experiment&replicates.library.biosample.biosample_type=tissue&organ_slims=small+intestine&assay_term_name=ChIP-seq&target.label=POLR2A
 	 * 2. Output file (fully qualified)
 	 * 3. Output file format (tsv or csv)
-	 * 4 (optional) Fully qualified file that containts list of accession numbers in this format
+	 * 4 (optional) Fully qualified file that contains list of accession numbers in this format
 	 * ENCRXXXX1
 	 * ENCRXXXX2
 	 * .
@@ -205,10 +205,17 @@ public class EncodeDCCJsonParser {
 		    		inAccesionList = "no";
 		    	}
 		    }
-	    	URL experimentPage = new URL(new StringBuffer().append(protocol).append("://").append(host).append(relativeURL).append("?format=json").toString());
 	    	
+	    	URL experimentPage = new URL(new StringBuffer().append(protocol).append("://").append(host).append(relativeURL).append("?format=json").toString());	 	    
+	 	    URLConnection urlConnExperimentPage = experimentPage.openConnection();
+	 	   
+	 	    if (auth != null)
+	 	    {
+	 	    	String basicAuth = "Basic " + new String(new Base64().encode(auth.getBytes()));
+	 	    	urlConnExperimentPage.setRequestProperty ("Authorization", basicAuth);
+	 	    }
 	    	 // drill down into experiment page to get to details of downloadable files
-		    Scanner scanExperimentPage = new Scanner(experimentPage.openStream());
+		    Scanner scanExperimentPage = new Scanner(urlConnExperimentPage.getInputStream());
 		    StringBuffer strBufferExperimentPage = new StringBuffer();
 		    while (scanExperimentPage.hasNext())
 		    	strBufferExperimentPage.append(scanExperimentPage.nextLine());
@@ -234,7 +241,17 @@ public class EncodeDCCJsonParser {
 	    		controlDetails = new StringBuffer();
 
     			URL controlURL = new URL(new StringBuffer().append(protocol).append("://").append(host).append(control_url).append("?format=json").toString());
-    			Scanner scanControlPage = new Scanner(controlURL.openStream());
+    			
+    			
+    		    
+    		    URLConnection urlConnControlPage = controlURL.openConnection();
+    		    if (auth != null)
+    		    {
+    		    	String basicAuth = "Basic " + new String(new Base64().encode(auth.getBytes()));
+    		    	urlConnControlPage.setRequestProperty ("Authorization", basicAuth);
+    		    }
+    			
+    			Scanner scanControlPage = new Scanner(urlConnControlPage.getInputStream());
     			StringBuffer strBufferControlPage = new StringBuffer();
     			while (scanControlPage.hasNext())
     			{
@@ -252,7 +269,7 @@ public class EncodeDCCJsonParser {
     				 if (controlFile == null)
     					 continue;
     				 String controlFilestatus = controlFile.optString("status","NA");
-    				 if (controlFilestatus.equals("released"))
+    				 //if (controlFilestatus.equals("released"))
     				 {
     					 String controlHref = controlFile.optString("href","NA");
 	    				 String controlMd5 = controlFile.optString("md5sum","NA");
